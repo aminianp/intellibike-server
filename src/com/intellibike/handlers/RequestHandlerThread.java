@@ -1,17 +1,26 @@
 package com.intellibike.handlers;
+
 import java.io.IOException;
-import java.io.ObjectInputStream;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 
-import com.intellibike.models.EchoPacket;
+import com.google.gson.Gson;
+import com.google.gson.stream.JsonReader;
+import com.intellibike.models.RequestPacket;
+import com.intellibike.models.ResponsePacket;
 import com.intellibike.utils.Log;
+import com.intellibike.utils.PacketUtils;
+import com.intellibike.utils.PacketUtils.RequestCodes;
 
 public class RequestHandlerThread extends Thread {
-	
+
 	private static final String TAG = RequestHandlerThread.class.getCanonicalName();
-	
+
 	private Socket socket = null;
+
+	private boolean hasTimedOut;
 
 	public RequestHandlerThread(Socket socket) {
 		super(TAG);
@@ -22,53 +31,54 @@ public class RequestHandlerThread extends Thread {
 
 	public void run() {
 
-		boolean gotByePacket = false;
-		
+		hasTimedOut = false;
+
 		try {
-			ObjectInputStream fromClient = new ObjectInputStream(socket.getInputStream());
-			EchoPacket packetFromClient;
-			
-			ObjectOutputStream toClient = new ObjectOutputStream(socket.getOutputStream());
-			
+			InputStream inboundTraffic = socket.getInputStream();
+			ObjectOutputStream outboundTraffic = new ObjectOutputStream(socket.getOutputStream());
 
-			while (( packetFromClient = (EchoPacket) fromClient.readObject()) != null) {
-				EchoPacket packetToClient = new EchoPacket();
-				
-				if(packetFromClient.type == EchoPacket.ECHO_REQUEST) {
-					packetToClient.type = EchoPacket.ECHO_REPLY;
-					packetToClient.message = packetFromClient.message;
-					System.out.println("From Client: " + packetFromClient.message);
-				
-					toClient.writeObject(packetToClient);
-					
-					continue;
-				}
-				
-				if (packetFromClient.type == EchoPacket.ECHO_NULL || packetFromClient.type == EchoPacket.ECHO_BYE) {
-					gotByePacket = true;
-					packetToClient = new EchoPacket();
-					packetToClient.type = EchoPacket.ECHO_BYE;
-					packetToClient.message = "Bye!";
-					toClient.writeObject(packetToClient);
-					break;
-				}
-
-				Log.e(TAG, "Bad Request: Unknown packet code " + packetFromClient.type);
-			}
+			do {
+				ResponsePacket serverResponse = parseRequest(inboundTraffic);
+				sendResponse(outboundTraffic, serverResponse);
+			} while (!hasTimedOut);
+			
 			
 			Log.i(TAG, "Shutting down connection with client " + socket.getInetAddress());
-			fromClient.close();
-			toClient.close();
+			inboundTraffic.close();
+			outboundTraffic.close();
 			Log.v(TAG, "Streams closed");
 			socket.close();
 			Log.v(TAG, "Socket closed");
 
 		} catch (IOException e) {
-			if(!gotByePacket)
-				e.printStackTrace();
-		} catch (ClassNotFoundException e) {
-			if(!gotByePacket)
 				e.printStackTrace();
 		}
+	}
+
+	private ResponsePacket parseRequest(InputStream inputStream) {
+		Gson gson = new Gson();
+		InputStreamReader reader = new InputStreamReader(inputStream);
+		RequestPacket packet = gson.fromJson(new JsonReader(reader), RequestPacket.class);
+
+		if (packet == null) {
+			return PacketUtils.generateErrorPacket(packet);
+		}
+
+		switch (packet.getRequestCode()) {
+			case RequestCodes.REGISTER:
+				return PacketUtils.registerNewDevice(packet);
+			case RequestCodes.POST_DATA:
+				return PacketUtils.postNewData(packet);
+			case RequestCodes.GET_DATA:
+				return PacketUtils.getDataForDevice(packet);
+			default:
+				return PacketUtils.generateErrorPacket(packet);
+		}
+	}
+	
+	private void sendResponse(ObjectOutputStream outboundTraffic, ResponsePacket serverResponse) throws IOException {
+		Gson gson = new Gson();
+		String jsonString = gson.toJson(serverResponse);
+		outboundTraffic.writeChars(jsonString);
 	}
 }
