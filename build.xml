@@ -1,9 +1,11 @@
 <project name="IntelliBike" basedir="." default="main">
 
 	<property name="src.dir" value="src" />
+	<property name="lib.dir" value="lib" />
 	<property name="build.dir" value="build" />
 	<property name="classes.dir" value="${build.dir}/classes" />
 	<property name="jar.dir" value="${build.dir}/jar" />
+	<property name="manifest.file" value="${jar.dir}/MANIFEST.MF" />
 
 	<property name="main-class" value="com.intellibike.app.IntelliBike" />
 
@@ -18,7 +20,11 @@
 
 	<target name="jar" depends="compile">
 		<mkdir dir="${jar.dir}" />
+
 		<jar destfile="${jar.dir}/${ant.project.name}.jar" basedir="${classes.dir}">
+			<fileset dir="${classes.dir}" />
+			<zipgroupfileset dir="${lib.dir}" includes="**/*.jar" />
+
 			<manifest>
 				<attribute name="Main-Class" value="${main-class}" />
 			</manifest>

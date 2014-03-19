@@ -2,33 +2,28 @@ package com.intellibike.utils;
 
 public class Log {
 	
-	private static final String BASE_MESSAGE = "%s;\t\t[%s]:\t\t%s%s;";
+	private static final String BASE_MESSAGE = "[%s][class: %s]:%s";
 	
-	private static final class Colours {
-		private static final String ANSI_RESET = "\u001B[0m";
-		private static final String ANSI_RED = "\u001B[31m";
-		private static final String ANSI_GREEN = "\u001B[32m";
-		private static final String ANSI_BLUE = "\u001B[34m";
+	private static final class Types {
+		private static final String ERROR = "ERROR";
+		private static final String EVENT = "EVENT";
+		private static final String VERBOSE = "VERBOSE";
 	}
 	
 	public static void i(String tag, String msg) {
-		printMsg(Colours.ANSI_GREEN, tag, msg);
-	}
-	
-	public static void d(String tag, String msg) {
-		printMsg(Colours.ANSI_BLUE, tag, msg);
+		printMsg(Types.EVENT, tag, msg);
 	}
 	
 	public static void e(String tag, String msg) {
-		printMsg(Colours.ANSI_RED, tag, msg);
+		printMsg(Types.ERROR, tag, msg);
 	}
 	
 	public static void v(String tag, String msg) {
-		printMsg(Colours.ANSI_RESET, tag, msg);
+		printMsg(Types.VERBOSE, tag, msg);
 	}
 	
 	private static void printMsg(String colour, String tag, String msg) {
-		String formattedMsg = String.format(BASE_MESSAGE, colour, tag, msg, Colours.ANSI_RESET);
+		String formattedMsg = String.format(BASE_MESSAGE, colour, tag, msg);
 		System.out.println(formattedMsg);
 	}
 }

@@ -1,30 +1,38 @@
 package com.intellibike.app;
 
-import java.net.ServerSocket;
+import java.util.Scanner;
 
-import com.intellibike.handlers.RequestHandlerThread;
+import com.intellibike.network.IntelliBikeServer;
 import com.intellibike.utils.Log;
 
 public class IntelliBike {
-	
+
 	private static final String TAG = IntelliBike.class.getCanonicalName();
-	
-	public static final int PORT_NUMBER = 4000;
-	
+
+	private static final String HOSTNAME = "localhost";
+	private static final int PORT = 8080;
+
+	private static final String SHUTDOWN = "shutdown";
+
 	public static void main(String[] args) throws Exception {
+		IntelliBikeServer server = new IntelliBikeServer(HOSTNAME, PORT);
+		Log.i(TAG, "Starting server at " + server.getServerAddress() + " on port " + server.getListeningPort());
+		server.start();
+		Log.v(TAG, "Server Started: Listening for incoming requests...");
 
-        ServerSocket serverSocket = null;
-        boolean listening = true;
+		Scanner scanner = new Scanner(System.in);
+		boolean running = true;
 
-        serverSocket = new ServerSocket(PORT_NUMBER);
-        Log.i(TAG, "Created Server Socket: Server is now ready to accept connectings");
-        Log.v(TAG, "Server running on " + serverSocket.getInetAddress() + ":" + serverSocket.getLocalPort());
-        
-        while (listening) {
-        	Log.v(TAG, "Listening for connections...");
-        	new RequestHandlerThread(serverSocket.accept()).start();
-        }
+		while (running) {
+			System.out.print("cmd> ");
+			String command = scanner.nextLine();
+			if (command != null && command.equals(SHUTDOWN)) {
+				running = false;
+			} else {
+				Log.e(TAG, "Unknown Command: " + command);
+			}
+		}
 
-        serverSocket.close();
+		server.stop();
 	}
 }
