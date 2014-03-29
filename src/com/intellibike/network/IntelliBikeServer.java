@@ -1,11 +1,8 @@
 package com.intellibike.network;
 
-import java.io.BufferedReader;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.net.InetAddress;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 
 import com.google.gson.Gson;
@@ -13,19 +10,14 @@ import com.intellibike.app.IntelliBike;
 import com.intellibike.models.Column;
 import com.intellibike.models.Column.Types;
 import com.intellibike.models.Data;
-import com.intellibike.models.PostBody;
+import com.intellibike.models.DataPacket;
+import com.intellibike.models.DataPacket.DATA_COLUMNS;
 import com.intellibike.sql.DatabaseManager;
 import com.intellibike.utils.Log;
 
 public class IntelliBikeServer extends NanoHTTPD {
 
 	private static final String TAG = IntelliBikeServer.class.getCanonicalName();
-
-	private static final String TABLE_NAME = "data";
-
-	private static enum DATA_COLUMNS {
-		DEVICE_ID, LATITUDE, LONGITUDE, RECORDED_TIME
-	};
 
 	public IntelliBikeServer(int port) {
 		super(port);
@@ -64,40 +56,33 @@ public class IntelliBikeServer extends NanoHTTPD {
 		switch (session.getMethod()) {
 			case GET:
 				try {
-					FileReader fileReader = new FileReader("./assets/test-get.txt");
-					BufferedReader lineReader = new BufferedReader(fileReader);
-					String line = "";
-					StringBuilder builder = new StringBuilder();
-					while ((line = lineReader.readLine()) != null) {
-						builder.append(line);
-					}
-
-					lineReader.close();
-					String json = builder.toString();
+					String param = session.getParms().get(DATA_COLUMNS.DEVICE_ID.name().toLowerCase());
+					int deviceId = Integer.valueOf(param);
+					String json = processGet(deviceId);
 					return new Response(json);
-				} catch (FileNotFoundException e) {
+				} catch (SQLException e) {
+					Log.e(TAG, "FATAL ERROR: Could not connect to the database");
 					e.printStackTrace();
-					System.exit(-1);
-				} catch (IOException e) {
+					IntelliBike.shutdown(this, -1);
+				} catch (ClassNotFoundException e) {
+					Log.e(TAG, "FATAL ERROR: Could not find JDBC database driver");
 					e.printStackTrace();
-					System.exit(-1);
+					IntelliBike.shutdown(this, -1);
 				}
+
 			case POST:
 				try {
-					FileWriter fileWriter = new FileWriter("./assets/test-post.txt");
 					String json = session.getRawBody();
-					fileWriter.write(json, 0, json.length());
-					fileWriter.close();
-
 					processInsert(json);
-
 					return new Response("{\"result\":\"success\"}");
-				} catch (FileNotFoundException e) {
+				} catch (SQLException e) {
+					Log.e(TAG, "FATAL ERROR: Could not connect to the database");
 					e.printStackTrace();
-					System.exit(-1);
-				} catch (IOException e) {
+					IntelliBike.shutdown(this, -1);
+				} catch (ClassNotFoundException e) {
+					Log.e(TAG, "FATAL ERROR: Could not find JDBC database driver");
 					e.printStackTrace();
-					System.exit(-1);
+					IntelliBike.shutdown(this, -1);
 				}
 				break;
 
@@ -108,28 +93,31 @@ public class IntelliBikeServer extends NanoHTTPD {
 		return null;
 	}
 
-	private void processInsert(String json) {
-		Gson gson = new Gson();
-		PostBody body = gson.fromJson(json, PostBody.class);
+	private String processGet(int deviceId) throws SQLException, ClassNotFoundException {
+		String whereClause = DATA_COLUMNS.DEVICE_ID.name().toLowerCase() + " = ?";
+		Column<Integer> deviceColumn = new Column<Integer>(DATA_COLUMNS.DEVICE_ID.name().toLowerCase(), DATA_COLUMNS.DEVICE_ID.ordinal() + 1, Types.INT, deviceId);
 
-		for (Data datum : body.getData()) {
-			Column<Integer> id = new Column<Integer>(DATA_COLUMNS.DEVICE_ID.name().toLowerCase(), DATA_COLUMNS.DEVICE_ID.ordinal() + 1, Types.INT, body.getDeviceId());
+		Column<?> columns[] = { deviceColumn };
+		Gson gson = new Gson();
+		ResultSet results = DatabaseManager.getInstance().query(DataPacket.TABLE_NAME, whereClause, columns);
+		DataPacket packet = new DataPacket();
+		packet.generateResponsePacket(deviceId, results);
+		return gson.toJson(packet);
+
+	}
+
+	private void processInsert(String json) throws SQLException, ClassNotFoundException {
+		Gson gson = new Gson();
+		DataPacket postBody = gson.fromJson(json, DataPacket.class);
+
+		for (Data datum : postBody.getData()) {
+			Column<Integer> id = new Column<Integer>(DATA_COLUMNS.DEVICE_ID.name().toLowerCase(), DATA_COLUMNS.DEVICE_ID.ordinal() + 1, Types.INT, postBody.getDeviceId());
 			Column<Double> latitude = new Column<Double>(DATA_COLUMNS.LATITUDE.name().toLowerCase(), DATA_COLUMNS.LATITUDE.ordinal() + 1, Types.DOUBLE, datum.getLatitude());
 			Column<Double> longitude = new Column<Double>(DATA_COLUMNS.LONGITUDE.name().toLowerCase(), DATA_COLUMNS.LONGITUDE.ordinal() + 1, Types.DOUBLE, datum.getLongitude());
 			Column<String> time = new Column<String>(DATA_COLUMNS.RECORDED_TIME.name().toLowerCase(), DATA_COLUMNS.RECORDED_TIME.ordinal() + 1, Types.STRING, datum.getTime());
 
-			try {
-				Column<?> columns[] = { id, latitude, longitude, time };
-				DatabaseManager.getInstance().insert(TABLE_NAME, columns);
-			} catch (SQLException e) {
-				Log.e(TAG, "FATAL ERROR: Could not connect to the database");
-				e.printStackTrace();
-				IntelliBike.shutdown(this, -1);
-			} catch (ClassNotFoundException e) {
-				Log.e(TAG, "FATAL ERROR: Could not find JDBC database driver");
-				e.printStackTrace();
-				IntelliBike.shutdown(this, -1);
-			}
+			Column<?> columns[] = { id, latitude, longitude, time };
+			DatabaseManager.getInstance().insert(DataPacket.TABLE_NAME, columns);
 		}
 	}
 

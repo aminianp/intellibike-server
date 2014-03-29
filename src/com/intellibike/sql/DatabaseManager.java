@@ -68,7 +68,7 @@ public class DatabaseManager {
 		}
 
 		ResultSet results = statement.executeQuery();
-		statement.close();
+//		statement.close();
 		return results;
 
 	}
