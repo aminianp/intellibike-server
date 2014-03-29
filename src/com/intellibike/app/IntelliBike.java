@@ -33,6 +33,12 @@ public class IntelliBike {
 			}
 		}
 
-		server.stop();
+		shutdown(server, 0);
 	}
+
+	public static void shutdown(IntelliBikeServer server, int code) {
+		server.stop();
+		System.exit(code);
+	}
+
 }

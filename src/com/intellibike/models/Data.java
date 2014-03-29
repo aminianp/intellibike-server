@@ -2,14 +2,19 @@ package com.intellibike.models;
 
 public class Data {
 	private String time;
-	private String location;
+	private double lat;
+	private double lng;
 
 	public String getTime() {
 		return time;
 	}
 
-	public String getLocation() {
-		return location;
+	public double getLatitude() {
+		return lat;
+	}
+
+	public double getLongitude() {
+		return lng;
 	}
 
 }
