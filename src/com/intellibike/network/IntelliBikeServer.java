@@ -107,6 +107,7 @@ public class IntelliBikeServer extends NanoHTTPD {
 	}
 
 	private void processInsert(String json) throws SQLException, ClassNotFoundException {
+		System.out.println(json);
 		Gson gson = new Gson();
 		DataPacket postBody = gson.fromJson(json, DataPacket.class);
 

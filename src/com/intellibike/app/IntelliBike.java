@@ -10,12 +10,12 @@ public class IntelliBike {
 	private static final String TAG = IntelliBike.class.getCanonicalName();
 
 	private static final String HOSTNAME = "localhost";
-	private static final int PORT = 8080;
+	private static final int PORT = 6969;
 
 	private static final String SHUTDOWN = "shutdown";
 
 	public static void main(String[] args) throws Exception {
-		IntelliBikeServer server = new IntelliBikeServer(HOSTNAME, PORT);
+		IntelliBikeServer server = new IntelliBikeServer(PORT);
 		Log.i(TAG, "Starting server at " + server.getServerAddress() + " on port " + server.getListeningPort());
 		server.start();
 		Log.v(TAG, "Server Started: Listening for incoming requests...");
