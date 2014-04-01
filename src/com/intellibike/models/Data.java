@@ -23,7 +23,7 @@ public class Data {
 	}
 
 	public void generateData(ResultSet result) throws SQLException {
-		time = result.getString(DATA_COLUMNS.DEVICE_ID.ordinal() + 1);
+		time = result.getString(DATA_COLUMNS.RECORDED_TIME.ordinal() + 1);
 		lat = result.getDouble(DATA_COLUMNS.LATITUDE.ordinal() + 1);
 		lng = result.getDouble(DATA_COLUMNS.LONGITUDE.ordinal() + 1);
 	}

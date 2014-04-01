@@ -98,7 +98,8 @@ public class DatabaseManager {
 	}
 
 	public void disconnect() throws SQLException {
-		connection.close();
+		if (connection != null)
+			connection.close();
 	}
 
 	private void sanityCheck(String tableName) {

@@ -1204,6 +1204,9 @@ public abstract class NanoHTTPD {
 				if (buf[splitbyte] == '\r' && buf[splitbyte + 1] == '\n' && buf[splitbyte + 2] == '\r' && buf[splitbyte + 3] == '\n') {
 					return splitbyte + 4;
 				}
+				if (buf[splitbyte] == '\n' && buf[splitbyte + 1] == '\n') {
+					return splitbyte + 2;
+				}
 				splitbyte++;
 			}
 			return 0;
